@@ -1,5 +1,5 @@
 # ==============================================================
-# Pobierz w Archiwach - Herunetrladen aus den Archiven
+# Pobierz w Archiwach - Herunterladen aus den Archiven
 # --------------------------------------------------------------
 # (c) 2021, Clemens Draschba
 # ==============================================================
@@ -15,7 +15,7 @@ zespol    = 111067
 baseurl   = 'https://www.szukajwarchiwach.gov.pl/de/'
 zespolurl = baseurl + 'zespol/-/zespol/{}?_Zespol_javax.portlet.action=zmienWidok&_Zespol_nameofjsp=jednostki&_Zespol_resetCur=false&_Zespol_delta=200'
 
-
+# Function to dowlaod the zip file of one single unit identified by its jednoska id:
 def download_scans( jednostka, chunk_size=4096):
     url  = baseurl + "jednostka?p_p_id=Jednostka&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=pobierzSkany&p_p_cacheability=cacheLevelPage&_Jednostka_id_jednostki=" + str(jednostka)
     reqdata = {
@@ -37,7 +37,7 @@ def download_scans( jednostka, chunk_size=4096):
             nread += chunk_size
     return nread
 
-
+# Request-Headers:
 Headers = {
     'Access-Control-Allow-Origin':      '*',
     'Access-Control-Allow-Methods':     'GET',
@@ -54,7 +54,7 @@ Headers = {
 	'Pragma':                           'no-cache'
 }
     
-# Doing a very first call to retrieve a valid Session-ID:
+# Doing a very first call to baseurl to retrieve a valid Session-ID:
 print('Retrieving Session: ')
 session = requests.Session()
 req     = session.get( baseurl, headers=Headers)
@@ -108,4 +108,4 @@ for index, unit in units_with_scans.iterrows():
     jednoska = unit.jid
     print("Start Downloading Jednostka: ", jednoska, '  ', unit.signature, ' with ', unit.scans, ' scans:' )
     bytes = download_scans(jednoska)
-    print("Done: Bytes geschrieben:", bytes);
+    print("Done: Bytes written:", bytes);
