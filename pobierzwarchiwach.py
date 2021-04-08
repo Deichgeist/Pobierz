@@ -5,6 +5,7 @@
 # ==============================================================
 import numpy  as np
 import pandas as pd
+import xlsxwriter
 import re
 import requests
 from bs4 import BeautifulSoup
@@ -103,9 +104,15 @@ units_with_scans = units[units['scans'] > 0 ]
 print("List of units with Scans:")
 print("------------------------------------------------------------------------------")
 print(units_with_scans)
+xlswriter = pd.ExcelWriter('xxx.xlsx', engine='xlsxwriter', options={'strings_to_urls': False})
+
+units_with_scans.to_excel(xlswriter, sheet_name="Units" , encoding="utf-8")
+xlswriter.save()
+xlswriter.close()
+
 
 for index, unit in units_with_scans.iterrows():
     jednoska = unit.jid
     print("Start Downloading Jednostka: ", jednoska, '  ', unit.signature, ' with ', unit.scans, ' scans:' )
-    bytes = download_scans(jednoska)
+    #bytes = download_scans(jednoska)
     print("Done: Bytes written:", bytes);
