@@ -11,8 +11,14 @@ import sys
 import requests
 import os
 import time
+import logging
 import multiprocessing.pool as mpool
 from bs4 import BeautifulSoup
+
+# Prepare Logging:
+logging.basicConfig(format='%(asctime)s|%(name)s|%(levelname)s|%(message)s', level=logging.INFO)
+logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
+logging.getLogger("numexpr.utils").setLevel(logging.WARNING)
 
 # Read the zespol-ID from command line or throw an error message:
 if (len(sys.argv) != 2) :
@@ -23,7 +29,7 @@ if (len(sys.argv) != 2) :
 
 # ID to download:
 zespol    = int(sys.argv[1])
-print('Zespol-ID read: ', zespol)
+logging.info('Zespol-ID read: {:d}'.format(zespol) )
 
 baseurl   = 'https://www.szukajwarchiwach.gov.pl/de/'
 zespolurl = baseurl + 'zespol/-/zespol/{}?_Zespol_javax.portlet.action=zmienWidok&_Zespol_nameofjsp=jednostki&_Zespol_resetCur=false&_Zespol_delta=200'
@@ -51,7 +57,7 @@ def download_scans( unit, chunk_size=4096):
     savefile = unit.path + "/" + unit.file + ".zip"
     nread = 0
     if not os.path.exists(savefile) :
-        print("Start downloading Jednostka:", jednoska, ':', unit.signature, 'with {:5d}'.format(unit.scans), 'scans:' )
+        logging.info("Start downloading Jednostka: {:9d} : {:15s} with {:5d} scans".format(jednoska, unit.signature, unit.scans) )
         t_start = time.time()
         r = requests.post(url=url, data=reqdata, headers=h, stream=True)
         with open(savefile, 'wb') as fd:
@@ -60,9 +66,10 @@ def download_scans( unit, chunk_size=4096):
         t_end   = time.time()
         t_delta = t_end - t_start
         rate    = 0.001 * nread / t_delta
-        print("Done  downloading Jednostka:", jednoska, ':', unit.signature, 'with {:5d}'.format(unit.scans), 'scans to', savefile, "with", nread, "bytes in {:8.3f}[sec] ".format(t_delta) , " --> {:.3f}[kB/s]".format(rate) )
+        logging.info("Done  downloading Jednostka: {:9d} : {:15s} with {:5d} scans to {:s} with {:d} bytes in {:8.3f}[sec] --> {:.3f}[kB/s] ".format(jednoska, unit.signature, unit.scans, savefile, nread, t_delta, rate) )
+        #print("Done  downloading Jednostka:", jednoska, ':', unit.signature, 'with {:5d}'.format(unit.scans), 'scans to', savefile, "with", nread, "bytes in {:8.3f}[sec] ".format(t_delta) , " --> {:.3f}[kB/s]".format(rate) )
     else :
-        print("Skipping existing file ", savefile, "!")
+        logging.info("Skipping existing file {:s} !".format(savefile) )
 
 # end of function
 # =========================================================================================================================
@@ -85,11 +92,11 @@ Headers = {
 }
     
 # Doing a very first call to baseurl to retrieve a valid Session-ID:
-print('Retrieving Session: ')
+logging.debug('Retrieving Session: ')
 session = requests.Session()
 req     = session.get( baseurl, headers=Headers)
 cookies = session.cookies;
-print("JSessionID=", cookies['JSESSIONID'])
+logging.info("JSessionID = {:s}".format( cookies['JSESSIONID']) )
 #print('Cookies=', cookies.get_dict())
 
 #Assembling the request for the list of units:
@@ -106,9 +113,14 @@ params  = {
 }
 req      = session.get(url, data=params)
 soup     = BeautifulSoup(req.content, 'html.parser')
-jeddiv   = soup.find("div", {"class": "jednostkaObiekty row"})
-jedtable = jeddiv.table.tbody
+# Find title of zespol:
+jeddtitle = soup.find("div", {"class":"tytulJednostki"})
+title     = jeddtitle.p.string
+logging.info("Titel: '{:s}'".format(title))
 
+# Find div with table of untis and parse them:
+jeddiv    = soup.find("div", {"class": "jednostkaObiekty row"})
+jedtable  = jeddiv.table.tbody
 unitslist = []
 for trow in jedtable("tr") :
     tds = trow('td')
@@ -139,8 +151,8 @@ units['file']     = units['path'] + "/" + units['serie'] + "/" + units['subserie
 units['file']     = units['file'].str.replace('[^0-9a-zA-Z]+', '_')
 
 units_with_scans = units[units['scans'] > 0 ]
-print("List of units with Scans:")
-print("------------------------------------------------------------------------------")
+logging.info("List of units with Scans:")
+logging.info("------------------------------------------------------------------------------")
 print(units_with_scans)
 
 xlswriter = pd.ExcelWriter('xxx.xlsx', engine='xlsxwriter', options={'strings_to_urls': False})
@@ -148,8 +160,8 @@ units.to_excel(xlswriter, sheet_name="Units" , encoding="utf-8")
 xlswriter.save()
 xlswriter.close()
 
-
-print("------------------------------------------------------------------------------")
+logging.info("------------------------------------------------------------------------------")
 for index, unit in units_with_scans.iterrows():
     jednoska = unit.jid
     download_scans(unit)
+
