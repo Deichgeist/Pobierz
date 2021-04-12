@@ -35,6 +35,7 @@ pip install ......  (to be tested)
 
 #### Program installation:
 For instruction on how to use git see [GIT](https://git-scm.com/)
+
 Get the latest source code from this repository by cloning into your workspace:
 ```
 git clone https://github.com/Deichgeist/Pobierz.git
@@ -43,6 +44,8 @@ if you just need to update your existing repository to the latest version, apply
 ```
 git pull
 ```
+
+If you just need a simple download with no capabilities to update the software, then simply download the actual package from this webpage.
 
 ### Run the program
 Find the Zespol-ID of the fond you'd like to download.
