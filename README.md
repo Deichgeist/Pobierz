@@ -12,6 +12,7 @@ In order to run this program you should have installed a python3 environment wit
 * xlsxwriter
 * Regular Expressions (re)
 * multiprocessing
+* logging
 * BeautifulSoup
 * and a http parser like lxml (required by BeautifulSoup)
 

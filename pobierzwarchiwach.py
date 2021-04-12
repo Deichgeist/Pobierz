@@ -59,14 +59,19 @@ def download_scans( unit, chunk_size=4096):
     if not os.path.exists(savefile) :
         logging.info("Start downloading Jednostka: {:9d} : {:15s} with {:5d} scans".format(jednoska, unit.signature, unit.scans) )
         t_start = time.time()
-        r = requests.post(url=url, data=reqdata, headers=h, stream=True)
-        with open(savefile, 'wb') as fd:
-            for chunk in r.iter_content(chunk_size=chunk_size):
-                nread += fd.write(chunk)
-        t_end   = time.time()
-        t_delta = t_end - t_start
-        rate    = 0.001 * nread / t_delta
-        logging.info("Done  downloading Jednostka: {:9d} : {:15s} with {:5d} scans to {:s} with {:d} bytes in {:8.3f}[sec] --> {:.3f}[kB/s] ".format(jednoska, unit.signature, unit.scans, savefile, nread, t_delta, rate) )
+        try :
+            r = requests.post(url=url, data=reqdata, headers=h, stream=True)
+            with open(savefile, 'wb') as fd:
+                for chunk in r.iter_content(chunk_size=chunk_size):
+                    nread += fd.write(chunk)
+            t_end   = time.time()
+            t_delta = t_end - t_start
+            rate    = 0.001 * nread / t_delta
+            logging.info("Done  downloading Jednostka: {:9d} : {:15s} with {:5d} scans to {:s} with {:d} bytes in {:8.3f}[sec] --> {:.3f}[kB/s] ".format(jednoska, unit.signature, unit.scans, savefile, nread, t_delta, rate) )
+        except :
+            logging.error("An error has occurred! Exiting download for {:s}... deleteing file {:s}".format(unit.signature, savefile))
+            if os.path.exists(savefile) :
+                os.remove(savefile)
         #print("Done  downloading Jednostka:", jednoska, ':', unit.signature, 'with {:5d}'.format(unit.scans), 'scans to', savefile, "with", nread, "bytes in {:8.3f}[sec] ".format(t_delta) , " --> {:.3f}[kB/s]".format(rate) )
     else :
         logging.info("Skipping existing file {:s} !".format(savefile) )
@@ -113,10 +118,10 @@ params  = {
 }
 req      = session.get(url, data=params)
 soup     = BeautifulSoup(req.content, 'html.parser')
-# Find title of zespol:
-jeddtitle = soup.find("div", {"class":"tytulJednostki"})
-title     = jeddtitle.p.string
-logging.info("Titel: '{:s}'".format(title))
+# Find original title of zespol:
+jeddtitle  = soup.find("div", {"class":"tytulJednostki"})
+origtitle     = jeddtitle.p.string
+logging.info("Original Titel: '{:s}'".format(origtitle))
 
 # Find div with table of untis and parse them:
 jeddiv    = soup.find("div", {"class": "jednostkaObiekty row"})
