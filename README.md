@@ -9,7 +9,6 @@ This is the very first prototype and far not ready yet.
 ### Requirements:
 In order to run this program you should have installed a python3 environment with these modules available:
 * Numpy and Pandas
-* xlsxwriter
 * Regular Expressions (re)
 * multiprocessing
 * logging

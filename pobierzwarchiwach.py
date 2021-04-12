@@ -5,7 +5,6 @@
 # ==============================================================
 import numpy  as np
 import pandas as pd
-import xlsxwriter
 import re
 import sys
 import requests
@@ -31,8 +30,8 @@ if (len(sys.argv) != 2) :
 zespol    = int(sys.argv[1])
 logging.info('Zespol-ID read: {:d}'.format(zespol) )
 
-baseurl   = 'https://www.szukajwarchiwach.gov.pl/de/'
-zespolurl = baseurl + 'zespol/-/zespol/{}?_Zespol_javax.portlet.action=zmienWidok&_Zespol_nameofjsp=jednostki&_Zespol_resetCur=false&_Zespol_delta=200'
+baseurl    = 'https://www.szukajwarchiwach.gov.pl/de/'
+MAXPERPAGE = 200
 
 # =========================================================================================================================
 # Function to dowlaod the zip file of one single unit identified by its jednoska id:
@@ -57,7 +56,7 @@ def download_scans( unit, chunk_size=4096):
     savefile = unit.path + "/" + unit.file + ".zip"
     nread = 0
     if not os.path.exists(savefile) :
-        logging.info("Start downloading Jednostka: {:9d} : {:15s} with {:5d} scans".format(jednoska, unit.signature, unit.scans) )
+        logging.info("Start downloading Jednostka: {:9d} : {:15s} with {:5d} scans".format(jednostka, unit.signature, unit.scans) )
         t_start = time.time()
         try :
             r = requests.post(url=url, data=reqdata, headers=h, stream=True)
@@ -67,7 +66,12 @@ def download_scans( unit, chunk_size=4096):
             t_end   = time.time()
             t_delta = t_end - t_start
             rate    = 0.001 * nread / t_delta
-            logging.info("Done  downloading Jednostka: {:9d} : {:15s} with {:5d} scans to {:s} with {:d} bytes in {:8.3f}[sec] --> {:.3f}[kB/s] ".format(jednoska, unit.signature, unit.scans, savefile, nread, t_delta, rate) )
+            logging.info("Done  downloading Jednostka: {:9d} : {:15s} with {:5d} scans to {:s} with {:d} bytes in {:8.3f}[sec] --> {:.3f}[kB/s] ".format(jednostka, unit.signature, unit.scans, savefile, nread, t_delta, rate) )
+        except KeyboardInterrupt:
+            logging.error("Interuppted by User! Deleteing file {:s}".format(savefile))
+            if os.path.exists(savefile) :
+                os.remove(savefile)
+            sys.exit()
         except :
             logging.error("An error has occurred! Exiting download for {:s}... deleteing file {:s}".format(unit.signature, savefile))
             if os.path.exists(savefile) :
@@ -78,6 +82,25 @@ def download_scans( unit, chunk_size=4096):
 
 # end of function
 # =========================================================================================================================
+
+# Function to evaluate the number of unit pages 
+def parsePaginationMaxPage( soup ) :
+    page    = 0
+    maxpage = 1
+    paginator = soup.find("div", {"class":"pagination-bar"} )
+    if paginator :
+        ul  = paginator.find("ul", {"class":"pagination"} )
+        lis = ul("li")
+        for li in lis :
+            pstr = li.a.string
+            if pstr :
+                page = int(pstr)
+                if page > maxpage :
+                    maxpage = page
+    return maxpage
+# end of function
+# =========================================================================================================================
+
 
 # Request-Headers:
 Headers = {
@@ -105,44 +128,59 @@ logging.info("JSessionID = {:s}".format( cookies['JSESSIONID']) )
 #print('Cookies=', cookies.get_dict())
 
 #Assembling the request for the list of units:
-url     = zespolurl.format(zespol)
-p_id    = "ZespolyWeb_INSTANCE_zEpUTaJhvA5o";
-params  = {
-  "p_p_id":                 p_id,
-  "p_p_lifecycle":          "0",
-  "p_p_state":              "normal",
-  "p_p_mode":               "view",
-  "_" + p_id + "_delta":    "500",
-  "_" + p_id + "_resetCur": "false",
-  "_" + p_id + "_cur":      "1"
-}
-req      = session.get(url, data=params)
-soup     = BeautifulSoup(req.content, 'html.parser')
-# Find original title of zespol:
-jeddtitle  = soup.find("div", {"class":"tytulJednostki"})
-origtitle     = jeddtitle.p.string
-logging.info("Original Titel: '{:s}'".format(origtitle))
-
-# Find div with table of untis and parse them:
-jeddiv    = soup.find("div", {"class": "jednostkaObiekty row"})
-jedtable  = jeddiv.table.tbody
-unitslist = []
-for trow in jedtable("tr") :
-    tds = trow('td')
-    href     = tds[0].a['href']
-    signatur = tds[0].string
-    titel    = tds[1].string
-    laufzeit = tds[2].string
-    scans    = tds[3].string
-    unit     = {
-        'jid':      0,
-        'signature': signatur,
-        'title':    titel,
-        'years': laufzeit,
-        'scans':    int(scans),
-        'url':     href
+unitslist     = list()
+current_page  = 1
+maxpage_count = 0
+while True :
+    zespolurl = baseurl + 'zespol/-/zespol/{}?_Zespol_javax.portlet.action=zmienWidok&_Zespol_nameofjsp=jednostki&_Zespol_resetCur=false&_Zespol_delta={}&&_Zespol_cur={}'
+    url       = zespolurl.format(zespol, MAXPERPAGE, current_page)
+    p_id      = "ZespolyWeb_INSTANCE_zEpUTaJhvA5o";
+    params    = {
+      "p_p_id":                 p_id,
+      "p_p_lifecycle":          "0",
+      "p_p_state":              "normal",
+      "p_p_mode":               "view",
+      "_" + p_id + "_delta":    str(MAXPERPAGE),
+      "_" + p_id + "_resetCur": "false",
+      "_" + p_id + "_cur":      str(current_page)
     }
-    unitslist.append(unit)
+    req      = session.get(url, data=params)
+    soup     = BeautifulSoup(req.content, 'html.parser')
+    
+    # Find original title of zespol:
+    jeddtitle  = soup.find("div", {"class":"tytulJednostki"})
+    origtitle  = jeddtitle.p.string
+
+    # Find div with table of untis and parse them:
+    jeddiv    = soup.find("div", {"class": "jednostkaObiekty row"})
+    jedtable  = jeddiv.table.tbody
+
+    for trow in jedtable("tr") :
+        tds = trow('td')
+        href     = tds[0].a['href']
+        signatur = tds[0].string
+        titel    = tds[1].string
+        laufzeit = tds[2].string
+        scans    = tds[3].string
+        unit     = {
+            'jid':      0,
+            'signature': signatur,
+            'title':    titel,
+            'years': laufzeit,
+            'scans':    int(scans),
+            'url':     href
+        }
+        unitslist.append(unit)
+        
+    # Check if we still need more loops or if we have read the last pagination page:
+    # Find out if there is more pagination on units:
+    maxpage_count = parsePaginationMaxPage(soup)
+    logging.info("Pagination read: {:d}/{:d}".format(current_page, maxpage_count) )
+    current_page = current_page + 1
+    if current_page > maxpage_count :
+       break
+
+logging.info("Original Titel: '{:s}'".format(origtitle))
 
 units = pd.DataFrame(unitslist)
 units['jid']      = units['url'].str.extract('(\d+)').astype(int)
@@ -160,13 +198,7 @@ logging.info("List of units with Scans:")
 logging.info("------------------------------------------------------------------------------")
 print(units_with_scans)
 
-xlswriter = pd.ExcelWriter('xxx.xlsx', engine='xlsxwriter', options={'strings_to_urls': False})
-units.to_excel(xlswriter, sheet_name="Units" , encoding="utf-8")
-xlswriter.save()
-xlswriter.close()
-
 logging.info("------------------------------------------------------------------------------")
 for index, unit in units_with_scans.iterrows():
-    jednoska = unit.jid
     download_scans(unit)
 
