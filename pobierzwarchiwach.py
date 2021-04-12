@@ -7,17 +7,31 @@ import numpy  as np
 import pandas as pd
 import xlsxwriter
 import re
+import sys
 import requests
+import os
+import time
+import multiprocessing.pool as mpool
 from bs4 import BeautifulSoup
 
-# Alt-Ukta:
-zespol    = 111067
+# Read the zespol-ID from command line or throw an error message:
+if (len(sys.argv) != 2) :
+    print("Error: Invalid number of parameters:", len(sys.argv))
+    print("USAGE: pobierzwarchiwach.py zespolid")
+    print("Exiting....  Try again please!")
+    exit(1)
+
+# ID to download:
+zespol    = int(sys.argv[1])
+print('Zespol-ID read: ', zespol)
 
 baseurl   = 'https://www.szukajwarchiwach.gov.pl/de/'
 zespolurl = baseurl + 'zespol/-/zespol/{}?_Zespol_javax.portlet.action=zmienWidok&_Zespol_nameofjsp=jednostki&_Zespol_resetCur=false&_Zespol_delta=200'
 
+# =========================================================================================================================
 # Function to dowlaod the zip file of one single unit identified by its jednoska id:
-def download_scans( jednostka, chunk_size=4096):
+def download_scans( unit, chunk_size=4096):
+    jednostka = unit.jid
     url  = baseurl + "jednostka?p_p_id=Jednostka&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=pobierzSkany&p_p_cacheability=cacheLevelPage&_Jednostka_id_jednostki=" + str(jednostka)
     reqdata = {
         "_Jednostka_wyborSkanow": "wszystkie",
@@ -30,13 +44,27 @@ def download_scans( jednostka, chunk_size=4096):
        "Referer":       "https://www.szukajwarchiwach.gov.pl/de/jednostka/-/jednostka/"+str(jednostka)
     }
     r = requests.post(url=url, data=reqdata, headers=h, stream=True)
-    save_path = str(jednostka) + ".zip"
+    # Check if directory already exists... otherweise create
+    if not os.path.exists(unit.path):
+        os.makedirs(unit.path)
+    
+    savefile = unit.path + "/" + unit.file + ".zip"
     nread = 0
-    with open(save_path, 'wb') as fd:
-        for chunk in r.iter_content(chunk_size=chunk_size):
-            fd.write(chunk)
-            nread += chunk_size
-    return nread
+    if not os.path.exists(savefile) :
+        print("Start downloading Jednostka:", jednoska, ':', unit.signature, 'with {:5d}'.format(unit.scans), 'scans:' )
+        t_start = time.time()
+        with open(savefile, 'wb') as fd:
+            for chunk in r.iter_content(chunk_size=chunk_size):
+                nread += fd.write(chunk)
+        t_end   = time.time()
+        t_delta = t_end - t_start
+        rate    = 0.001 * nread / t_delta
+        print("Done  downloading Jednostka:", jednoska, ':', unit.signature, 'with {:5d}'.format(unit.scans), 'scans to', savefile, "with", nread, "bytes in {:8.3f}[sec] ".format(t_delta) , " --> {:.3f}[kB/s]".format(rate) )
+    else :
+        print("Skipping existing file ", savefile, "!")
+
+# end of function
+# =========================================================================================================================
 
 # Request-Headers:
 Headers = {
@@ -99,20 +127,28 @@ for trow in jedtable("tr") :
     unitslist.append(unit)
 
 units = pd.DataFrame(unitslist)
-units['jid'] = units['url'].str.extract('(\d+)').astype(int)
+units['jid']      = units['url'].str.extract('(\d+)').astype(int)
+units['archive']  = units['signature'].str.split('/',5).str[0]
+units['bestand']  = units['signature'].str.split('/',5).str[1]
+units['serie']    = units['signature'].str.split('/',5).str[2]
+units['subserie'] = units['signature'].str.split('/',5).str[3]
+units['unit']     = units['signature'].str.split('/',5).str[4]
+units['path']     = units['archive'].apply(lambda x: x.zfill(2)) + "/" + units['bestand'].apply(lambda x: x.zfill(4))
+units['file']     = units['path'] + "/" + units['serie'] + "/" + units['subserie'] + "/" + units['unit'].apply(lambda x: x.zfill(5))
+units['file']     = units['file'].str.replace('[^0-9a-zA-Z]+', '_')
+
 units_with_scans = units[units['scans'] > 0 ]
 print("List of units with Scans:")
 print("------------------------------------------------------------------------------")
 print(units_with_scans)
-xlswriter = pd.ExcelWriter('xxx.xlsx', engine='xlsxwriter', options={'strings_to_urls': False})
 
-units_with_scans.to_excel(xlswriter, sheet_name="Units" , encoding="utf-8")
+xlswriter = pd.ExcelWriter('xxx.xlsx', engine='xlsxwriter', options={'strings_to_urls': False})
+units.to_excel(xlswriter, sheet_name="Units" , encoding="utf-8")
 xlswriter.save()
 xlswriter.close()
 
 
+print("------------------------------------------------------------------------------")
 for index, unit in units_with_scans.iterrows():
     jednoska = unit.jid
-    print("Start Downloading Jednostka: ", jednoska, '  ', unit.signature, ' with ', unit.scans, ' scans:' )
-    #bytes = download_scans(jednoska)
-    print("Done: Bytes written:", bytes);
+    download_scans(unit)
