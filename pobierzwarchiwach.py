@@ -43,7 +43,7 @@ def download_scans( unit, chunk_size=4096):
        "Origin":        "https://www.szukajwarchiwach.gov.pl",
        "Referer":       "https://www.szukajwarchiwach.gov.pl/de/jednostka/-/jednostka/"+str(jednostka)
     }
-    r = requests.post(url=url, data=reqdata, headers=h, stream=True)
+
     # Check if directory already exists... otherweise create
     if not os.path.exists(unit.path):
         os.makedirs(unit.path)
@@ -53,6 +53,7 @@ def download_scans( unit, chunk_size=4096):
     if not os.path.exists(savefile) :
         print("Start downloading Jednostka:", jednoska, ':', unit.signature, 'with {:5d}'.format(unit.scans), 'scans:' )
         t_start = time.time()
+        r = requests.post(url=url, data=reqdata, headers=h, stream=True)
         with open(savefile, 'wb') as fd:
             for chunk in r.iter_content(chunk_size=chunk_size):
                 nread += fd.write(chunk)
