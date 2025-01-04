@@ -27,11 +27,6 @@ Just refer to your distribution installation instruction on how to install pytho
 If you do not yet have a Python environemnt installed please refer to these installation instructions for a Windows-System using
 [Anaconda Installation](https://docs.anaconda.com/anaconda/install/windows/).
 
-#### Installing required modules:
-just in case some of the required modules are still missing, apply:
-```
-pip install ......  (to be tested)
-```
 
 #### Program installation:
 For instruction on how to use git see [GIT](https://git-scm.com/)
@@ -47,11 +42,31 @@ git pull
 
 If you just need a simple download with no capabilities to update the software, then simply download the actual package from this webpage.
 
+
+#### Installing required pythpn modules and packages:
+
+It is strongly recommended to create a virtual python environment inside the folder. This can be done in a bash like this:
+````sh
+python3 -m venv venv
+````
+than activate the virtual environment:
+````sh
+source venv/bin/activate
+````
+
+make sure you have the virtual environment activated, theninstall the required python packages:
+
+```sh
+pip install -r requirements.txt
+```
+You are almost done....  :thumbsup:
+
 ### Run the program
+
 Find the Zespol-ID of the fond you'd like to download.
 start the program and pass the ID as parameter:
 ```
 python pobierzwarchiwach.py 111067
 ```
 
-Have fun!
+Have fun! :heart_eyes:
