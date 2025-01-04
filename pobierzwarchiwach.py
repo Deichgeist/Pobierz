@@ -5,13 +5,12 @@
 # ==============================================================
 import numpy  as np
 import pandas as pd
-import re
 import sys
 import requests
 import os
 import time
 import logging
-import multiprocessing.pool as mpool
+#import multiprocessing.pool as mpool
 from bs4 import BeautifulSoup
 
 # Prepare Logging:
@@ -76,7 +75,6 @@ def download_scans( unit, chunk_size=4096):
             logging.error("An error has occurred! Exiting download for {:s}... deleteing file {:s}".format(unit.signature, savefile))
             if os.path.exists(savefile) :
                 os.remove(savefile)
-        #print("Done  downloading Jednostka:", jednoska, ':', unit.signature, 'with {:5d}'.format(unit.scans), 'scans to', savefile, "with", nread, "bytes in {:8.3f}[sec] ".format(t_delta) , " --> {:.3f}[kB/s]".format(rate) )
     else :
         logging.info("Skipping existing file {:s} !".format(savefile) )
 
@@ -184,14 +182,14 @@ logging.info("Original Titel: '{:s}'".format(origtitle))
 
 units = pd.DataFrame(unitslist)
 units['jid']      = units['url'].str.extract('(\d+)').astype(int)
-units['archive']  = units['signature'].str.split('/',5).str[0]
-units['bestand']  = units['signature'].str.split('/',5).str[1]
-units['serie']    = units['signature'].str.split('/',5).str[2]
-units['subserie'] = units['signature'].str.split('/',5).str[3]
-units['unit']     = units['signature'].str.split('/',5).str[4]
+units['archive']  = units['signature'].str.split('/', n=5, expand=True)[0]
+units['bestand']  = units['signature'].str.split('/', n=5, expand=True)[1]
+units['serie']    = units['signature'].str.split('/', n=5, expand=True)[2]
+units['subserie'] = units['signature'].str.split('/', n=5, expand=True)[3]
+units['unit']     = units['signature'].str.split('/', n=5, expand=True)[4]
 units['path']     = units['archive'].apply(lambda x: x.zfill(2)) + "/" + units['bestand'].apply(lambda x: x.zfill(4))
 units['file']     = units['path'] + "/" + units['serie'] + "/" + units['subserie'] + "/" + units['unit'].apply(lambda x: x.zfill(5))
-units['file']     = units['file'].str.replace('[^0-9a-zA-Z]+', '_')
+units['file']     = units['file'].str.replace( r'[^0-9a-zA-Z]+', '_', regex=True)
 
 units_with_scans = units[units['scans'] > 0 ]
 logging.info("List of units with Scans:")

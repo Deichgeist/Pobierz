@@ -8,16 +8,14 @@ This is the very first prototype and far not ready yet.
 
 ### Requirements:
 In order to run this program you should have installed a python3 environment with these modules available:
-* Numpy and Pandas
+* Pandas
 * Regular Expressions (re)
-* multiprocessing
 * logging
 * BeautifulSoup
-* and a http parser like lxml (required by BeautifulSoup)
 
 ## Installation:
-Please make sure you habe a proper python environment installed on your computer. 
-The program has been testet using Windows 10 and a Ubuntu 20.04 environments:
+Please make sure you have a proper python environment installed on your computer. 
+The program has been testet using Windows 10 and a Ubuntu 24.04 environments:
 
 #### Python on Linux:
 Most Linux distributiuons already come with python3 preinstalled. 
@@ -32,11 +30,11 @@ If you do not yet have a Python environemnt installed please refer to these inst
 For instruction on how to use git see [GIT](https://git-scm.com/)
 
 Get the latest source code from this repository by cloning into your workspace:
-```
+```sh
 git clone https://github.com/Deichgeist/Pobierz.git
 ```
 if you just need to update your existing repository to the latest version, apply:
-```
+```sh
 git pull
 ```
 
@@ -65,8 +63,8 @@ You are almost done....  :thumbsup:
 
 Find the Zespol-ID of the fond you'd like to download.
 start the program and pass the ID as parameter:
-```
-python pobierzwarchiwach.py 111067
+```sh
+python3 pobierzwarchiwach.py 111067
 ```
 
 Have fun! :heart_eyes:
