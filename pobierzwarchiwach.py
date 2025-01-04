@@ -1,7 +1,7 @@
 # ==============================================================
 # Pobierz w Archiwach - Herunterladen aus den Archiven
 # --------------------------------------------------------------
-# (c) 2021, Clemens Draschba
+# (c) 2021, Deich Geist, MIT License
 # ==============================================================
 import numpy  as np
 import pandas as pd
